@@ -53,6 +53,7 @@ class search_sort_order(str, Enum):
 
 @router.get("/search/", tags=["search"])
 def search_orders(
+    request: Request,
     customer_name: str = "",
     potion_sku: str = "",
     search_page: str = "",
@@ -87,18 +88,26 @@ def search_orders(
     # get all customers, customers and completed_customers table, less overhead with parsing?
     # alternative could be adding attribute - completed? to be fair, if we are searching for the name, we might
     # as well check the attribute, the only time this overhead would be apparent is when grabbing all users.
-    customers = None
+    customers = []
     with db.engine.begin() as connection:
+        # Query for total count
+        total_count_query = sqlalchemy.select(sqlalchemy.func.count()).select_from(carts_table).join(
+            customer_table, carts_table.c.customer_id == customer_table.c.id
+        )
+
+ 
         query = sqlalchemy.select(carts_table.c.id.label("line_item_id"), carts_table.c.item_sku, customer_table.c.customer_name, 
                                    carts_table.c.quantity.label("line_item_total"), customer_table.c.visit_time.label("timestamp"))
         query = query.join(carts_table, carts_table.c.customer_id == customer_table.c.id)
-        print(query)
+
 
         # loop through conditional operators and tack onto query
         if len(customer_name := customer_name.strip()) > 0:
             query = query.filter(customer_table.c.customer_name.ilike(customer_name+ "%"))
+            total_count_query = total_count_query.filter(customer_table.c.customer_name.ilike(customer_name+ "%"))
         if len(potion_sku := potion_sku.strip()) > 0:
-            query = query.filter(customer_carts.c.item_sku.ilike(potion_sku))
+            query = query.filter(carts_table.c.item_sku.ilike(potion_sku))
+            total_count_query = total_count_query.filter(carts_table.c.item_sku.ilike(potion_sku))
         if sort_order.value == "asc":
             query = query.order_by(sqlalchemy.text(sort_col.value))
         else:
@@ -112,6 +121,8 @@ def search_orders(
                 print(e)
         print(query)
 
+        line_count = connection.execute(total_count_query).scalar()
+        print("Total items: ", line_count)
         # res = connection.execute(sqlalchemy.text("SELECT cart.id AS line_item_id, cart.item_sku AS item_sku," +\
         #                                          "customer_name, cart.quantity AS line_item_total, visit_time FROM customers " +\
         #                                          "JOIN carts AS cart ON cart.customer_id = customers.id "
@@ -119,13 +130,15 @@ def search_orders(
         #                                          "LIMIT 5 "))
         res = connection.execute(query)
         customers = res.mappings().all()
-            # print(customers)
 
-    return {
-        "previous": "",
-        "next": "",
+
+        # get url that called with query params
+        print(request.query_params)
+        return {
+        "previous": return_previous_page(str(request.query_params), line_count, search_page),
+        "next": return_next_page(str(request.query_params), line_count, search_page),
         "results": customers ,
-    }
+        }
 
 
 class Customer(BaseModel):
@@ -289,3 +302,26 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
         # ), {"gold_recv": gold_recv})
 
     return {"total_potions_bought": total_quantity, "total_gold_paid": total}
+
+import re
+
+def return_previous_page(query: str, line_count: int, cur_page: int):
+    prev_page = "/carts/search/"
+    if line_count == 0 or cur_page == 0:
+        return ""
+    remaining = ((int(line_count) - ((cur_page + 1) * 5))) // 5
+    if remaining < -1:
+        new_page = (line_count // 5)
+    else:
+        new_page = cur_page - 1
+    query = re.sub(r'search_page=\d+', f'search_page={new_page}', query)
+    return prev_page + query
+
+def return_next_page(query: str, line_count: int, cur_page: int):
+    prev_page = "/carts/search/"
+    remaining = ((int(line_count) - ((cur_page + 1) * 5))) // 5
+    if remaining <= 0:
+        return ""
+    new_page = cur_page + 1
+    query = re.sub(r'search_page=\d+', f'search_page={new_page}', query)
+    return prev_page + query
