@@ -239,7 +239,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
             #     potions_table.c.potion_sku == sqlalchemy.bindparam("b_potion_sku")
             # ), update_val)
             # update cart to reflect completed checkout
-            connection.execute(sqlalchemy.update(customer_table).where({"id": cart_id}).values(completed=1))
+            connection.execute(sqlalchemy.update(customer_table).join(customer_carts.c.customer_id == customer_table.c.customer_id).where(carts_table.c.id == cart_id).values(completed=1))
             connection.execute(sqlalchemy.insert(potions_ledger_table).values(update_val))
           
 
