@@ -197,9 +197,12 @@ def get_bottle_plan():
         return needs 
 
 def create_custom_potions(inventory: list[int], needs: list[dict], ratio: list[int] = None):
+    # Store potion quantity by type
+    potion_quantities = {}
+
     # iterate until no more complete potions can be created
     inventory_check = 0
-    while (inventory_check < 3):
+    while inventory_check < 3:
         inventory_check = 0
         # iterate every potion, getting ratios of 50 and 25
         for i in random.sample(range(0, 4), 4):
@@ -215,11 +218,11 @@ def create_custom_potions(inventory: list[int], needs: list[dict], ratio: list[i
                     continue
                 potion_type[j] = 50
                 inventory[j] -= 50
-                
-                needs.append({
-                            "potion_type": potion_type.copy(),
-                            "quantity": 1,
-                        })
+                key = tuple(potion_type)
+                if key in potion_quantities:
+                    potion_quantities[key] += 1
+                else:
+                    potion_quantities[key] = 1
             for j in range(0, 4):
                 buddy = j + 1
                 if j == i:
@@ -236,20 +239,30 @@ def create_custom_potions(inventory: list[int], needs: list[dict], ratio: list[i
                 if inventory[j] < 25 or inventory[buddy] < 25:
                     continue
 
-                # adding potion to needs
+                # Modify potion type for this combination
                 potion_type[j] = 25
                 potion_type[buddy] = 25
                 inventory[j] -= 25
                 inventory[buddy] -= 25
                 inventory[i] -= 50
-                # needs improvement, quantity should be summed
-                needs.append({
-                            "potion_type": potion_type.copy(),
-                            "quantity": 1,
-                        })
+
+                key = tuple(potion_type)
+                if key in potion_quantities:
+                    potion_quantities[key] += 1
+                else:
+                    potion_quantities[key] = 1
 
                 if inventory[i] < 50:
                     break
+
+    # Append all potion types and quantities to needs at the end
+    for potion_type, quantity in potion_quantities.items():
+        needs.append({
+            "potion_type": list(potion_type),
+            "quantity": quantity,
+        })
+
+    print(needs)
 
 
 if __name__ == "__main__":
