@@ -8,7 +8,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship
 from src import database as db
 from src.helper import sku_to_db_col
-from src.models import potions_table, potions_ledger_table, customer_table
+from src.models import potions_table, potions_ledger_table, customer_table, carts_table
 
 class Base(DeclarativeBase):
     pass
@@ -89,21 +89,42 @@ def search_orders(
     # as well check the attribute, the only time this overhead would be apparent is when grabbing all users.
     customers = None
     with db.engine.begin() as connection:
-        res = connection.execute(sqlalchemy.text("SELECT * FROM customers"))
-        customers = res.all()
+        query = sqlalchemy.select(carts_table.c.id.label("line_item_id"), carts_table.c.item_sku, customer_table.c.customer_name, 
+                                   carts_table.c.quantity.label("line_item_total"), customer_table.c.visit_time.label("timestamp"))
+        query = query.join(carts_table, carts_table.c.customer_id == customer_table.c.id)
+        print(query)
+
+        # loop through conditional operators and tack onto query
+        if len(customer_name := customer_name.strip()) > 0:
+            query = query.where(customer_carts.c.customer_name == customer_name)
+        if len(potion_sku := potion_sku.strip()) > 0:
+            query = query.where(customer_carts.c.potion_sku == potion_sku)
+        if sort_order.value == "asc":
+            query = query.order_by(sqlalchemy.text(sort_col.value))
+        else:
+            query = query.order_by(sqlalchemy.desc(sqlalchemy.text(sort_col.value)))
+        query = query.limit(5)
+        if len(search_page := search_page.strip()) > 0:
+            try:
+                search_page = int(search_page)
+                query = query.offset(search_page * 5)
+            except Exception as e:
+                print(e)
+        print(query)
+
+        # res = connection.execute(sqlalchemy.text("SELECT cart.id AS line_item_id, cart.item_sku AS item_sku," +\
+        #                                          "customer_name, cart.quantity AS line_item_total, visit_time FROM customers " +\
+        #                                          "JOIN carts AS cart ON cart.customer_id = customers.id "
+        #                                          "ORDER BY visit_time DESC " +\
+        #                                          "LIMIT 5 "))
+        res = connection.execute(query)
+        customers = res.mappings().all()
+            # print(customers)
 
     return {
         "previous": "",
         "next": "",
-        "results": [
-            {
-                "line_item_id": 1,
-                "item_sku": "1 oblivion potion",
-                "customer_name": "Scaramouche",
-                "line_item_total": 50,
-                "timestamp": "2021-01-01T00:00:00Z",
-            }
-        ],
+        "results": customers ,
     }
 
 
