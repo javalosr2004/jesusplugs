@@ -96,7 +96,7 @@ def search_orders(
 
         # loop through conditional operators and tack onto query
         if len(customer_name := customer_name.strip()) > 0:
-            query = query.where(customer_carts.c.customer_name == customer_name)
+            query = query.where(customer_table.c.customer_name == customer_name)
         if len(potion_sku := potion_sku.strip()) > 0:
             query = query.where(customer_carts.c.potion_sku == potion_sku)
         if sort_order.value == "asc":
