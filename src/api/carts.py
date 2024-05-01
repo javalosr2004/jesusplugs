@@ -96,9 +96,9 @@ def search_orders(
 
         # loop through conditional operators and tack onto query
         if len(customer_name := customer_name.strip()) > 0:
-            query = query.where(customer_table.c.customer_name == customer_name)
+            query = query.filter(customer_table.c.customer_name.like(customer_name+ "%"))
         if len(potion_sku := potion_sku.strip()) > 0:
-            query = query.where(customer_carts.c.potion_sku == potion_sku)
+            query = query.where(customer_carts.c.item_sku == potion_sku)
         if sort_order.value == "asc":
             query = query.order_by(sqlalchemy.text(sort_col.value))
         else:
