@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-import re
+import random
 import sqlalchemy
 from src import database as db
 from src.helper import get_potion_type
@@ -29,7 +29,9 @@ def get_catalog():
 
         # iterate and add to catalog if the name of the given potion color matches the regex
         # FORMAT: sku, name, price, r, g, b, d, quantity
-        for potion in result:
+        for potion in random.sample(result, len(result)):
+            if (len(catalog) == 6):
+                break
             #TODO: allow functionality to purchase more than 1 potions
             if potion[7] <= 0:
                 continue
