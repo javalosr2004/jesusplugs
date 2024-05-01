@@ -223,6 +223,7 @@ def create_custom_potions(inventory: list[int], needs: list[dict], ratio: list[i
                     potion_quantities[key] += 1
                 else:
                     potion_quantities[key] = 1
+                potion_type[j] = 0
             for j in range(0, 4):
                 buddy = j + 1
                 if j == i:
@@ -251,6 +252,8 @@ def create_custom_potions(inventory: list[int], needs: list[dict], ratio: list[i
                     potion_quantities[key] += 1
                 else:
                     potion_quantities[key] = 1
+                potion_type[j] = 0
+                potion_type[buddy] = 0
 
                 if inventory[i] < 50:
                     break
