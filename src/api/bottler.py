@@ -118,6 +118,7 @@ def get_bottle_plan():
         if (total_potions == None):
             print('failed to fetch potion count')
             return needs
+        print(total_potions)
 
         if total_potions >= 50:
             print("too many potions, exceeds 50")
@@ -163,20 +164,21 @@ def get_bottle_plan():
 
 
 
-            needs.append(
-                {
-                    "potion_type": potion_type.copy(),
-                    "quantity": potions_produced,
-                }
-            )
+          
 
             potion_type[idx] = 0
             if potions_produced + total_potions >= 50:
                 potions_produced = (50 - total_potions) 
+                needs.append(
+                                {
+                                    "potion_type": potion_type.copy(),
+                                    "quantity": potions_produced,
+                                }
+                            )
                 return needs
             total_potions += potions_produced
 
-        print(inventory)
+        print(inventory, total_potions)
         # CUSTOM POTIONS
         # use remaining mls to create some wacky potion
         # calculate most custom potions we can make
