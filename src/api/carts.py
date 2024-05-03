@@ -308,7 +308,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
 import re
 
 def return_previous_page(query: str, line_count: int, cur_page: int):
-    prev_page = "/carts/search/"
+    # prev_page = "/carts/search/"
     if line_count == 0 or cur_page == 0:
         return ""
     remaining = ((int(line_count) - ((cur_page + 1) * 5))) // 5
@@ -316,16 +316,20 @@ def return_previous_page(query: str, line_count: int, cur_page: int):
         new_page = (line_count // 5)
     else:
         new_page = cur_page - 1
-    query = re.sub(r'search_page=\d+', f'search_page={new_page}', query)
-    return prev_page + query
+    return new_page
+
+    # query = re.sub(r'search_page=\d+', f'search_page={new_page}', query)
+    # return prev_page + query
 
 def return_next_page(query: str, line_count: int, cur_page: int):
-    prev_page = "/carts/search/"
+    # prev_page = "/carts/search/"
     remaining = ((int(line_count) - ((cur_page + 1) * 5))) // 5
     if remaining <= 0:
         return ""
     new_page = cur_page + 1
-    if (cur_page == 0):
-        return prev_page + query + "&search_page=" + str(new_page)
-    query = re.sub(r'search_page=\d+', f'search_page={new_page}', query)
-    return prev_page + query
+    # if (cur_page == 0):
+        # return prev_page + query + "&search_page=" + str(new_page)
+    # query = re.sub(r'search_page=\d+', f'search_page={new_page}', query)
+    return new_page
+    
+    # r eturn prev_page + query
