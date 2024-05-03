@@ -79,9 +79,9 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
         # update gold that was recieved
 
         connection.execute(sqlalchemy.text(f"""
-            INSERT INTO inventory_ledger (attribute, change)
-            VALUES ('gold', :change)
-            """), {"change": -1 * total_cost})
+            INSERT INTO inventory_ledger (attribute, change, reason)
+            VALUES ('gold', :change, :reason)
+            """), {"change": (-1 * total_cost), "reason": 'barrel delivery'})
 
     print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
 

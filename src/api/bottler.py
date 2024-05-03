@@ -160,7 +160,6 @@ def get_bottle_plan():
                 
             potion_type[idx] = 100
 
-            inventory[idx] -= potions_produced * 100
 
 
 
@@ -176,6 +175,8 @@ def get_bottle_plan():
                                 }
                             )
                 return needs
+
+            inventory[idx] -= potions_produced * 100
             total_potions += potions_produced
 
         print(inventory, total_potions)
