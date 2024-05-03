@@ -119,6 +119,8 @@ def search_orders(
                 query = query.offset(search_page * 5)
             except Exception as e:
                 print(e)
+        else:
+            search_page = 0
         print(query)
 
         line_count = connection.execute(total_count_query).scalar()
@@ -323,5 +325,7 @@ def return_next_page(query: str, line_count: int, cur_page: int):
     if remaining <= 0:
         return ""
     new_page = cur_page + 1
+    if (cur_page == 0):
+        return prev_page + query + "&search_page=" + str(new_page)
     query = re.sub(r'search_page=\d+', f'search_page={new_page}', query)
     return prev_page + query
