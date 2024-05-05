@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from src.api import auth
 import sqlalchemy
 from src import database as db
+from sqlalchemy import func
 from src.api import catalog
 from src.helper import potion_type_name,  idx_to_color
 import re
@@ -24,6 +25,21 @@ router = APIRouter(
 class PotionInventory(BaseModel):
     potion_type: list[int]
     quantity: int
+
+class Potion[BaseModel]:
+    potion_type: list[int]
+
+@router.post("/wishlist")
+def add_to_wishlist(potions: list[Potion]):
+    pass
+
+@router.patch("/wishlist")
+def remove_from_wishlist(potions: list[Potion]):
+    pass
+
+@router.delete("/wishlist")
+def clear_wishlist():
+    pass
 
 @router.post("/deliver/{order_id}")
 def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int):
@@ -112,6 +128,7 @@ def get_bottle_plan():
 
     # regex for bottles
     with db.engine.begin() as connection:
+        # check if we should start favoring some potions, depending on if we have enough potions
         # calculate how many potions we currently have
         result = connection.execute(sqlalchemy.text("SELECT SUM(change) as potion_count FROM potion_ledger"))
         total_potions = result.scalar_one_or_none()
@@ -160,12 +177,6 @@ def get_bottle_plan():
                 
             potion_type[idx] = 100
 
-
-
-
-          
-
-            potion_type[idx] = 0
             if potions_produced + total_potions >= 50:
                 potions_produced = (50 - total_potions) 
                 needs.append(
@@ -175,6 +186,9 @@ def get_bottle_plan():
                                 }
                             )
                 return needs
+          
+
+            potion_type[idx] = 0
 
             inventory[idx] -= potions_produced * 100
             total_potions += potions_produced
@@ -215,6 +229,12 @@ def get_bottle_plan():
         print("Final Inventory:", inventory)
         print("Needs:", needs)
         return needs 
+
+def get_potion_rankings():
+    with db.engine.begin() as connection:
+        stmt = sqlalchemy.select(func.avg(func.sum(potions_ledger_table.c.change)))
+        stmt = stmt.where(potions_ledger_table.c.time)
+        connection.execute()
 
 def create_custom_potions(inventory: list[int], needs: list[dict], total_potions: int = 0, ratio: list[int] = None):
     # Store potion quantity by type
