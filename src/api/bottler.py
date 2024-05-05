@@ -34,6 +34,7 @@ class PotionInventory(BaseModel):
 class Potion(BaseModel):
     potion_type: list[int]
     quantity: int
+    exclude: bool
 
 @router.post("/wishlist")
 def add_to_wishlist(potions: list[Potion]):
@@ -45,7 +46,8 @@ def add_to_wishlist(potions: list[Potion]):
                 "green": potion.potion_type[1],
                 "blue": potion.potion_type[2],
                 "dark": potion.potion_type[3],
-                "quantity": potion.quantity
+                "quantity": potion.quantity,
+                "exclude": int(potion.exclude)
             })
         connection.execute(sqlalchemy.insert(Wishlist).values(insert_val))
     return "OK"
@@ -146,6 +148,7 @@ def get_bottle_plan():
     needs = []
     total_potions = 0
     wishlist = []
+    excluded = None
 
     # regex for bottles
     with db.engine.begin() as connection:
@@ -155,10 +158,7 @@ def get_bottle_plan():
         res = connection.execute(sqlalchemy.text("SELECT SUM(change) as potion_count FROM potion_ledger"))
         total_potions = res.scalar_one_or_none()
 
-        res = connection.execute(sqlalchemy.text("SELECT red, green, blue, dark, quantity "+\
-                                           "FROM wishlist"))
-
-        
+          
         if (total_potions == None):
             print('failed to fetch potion count')
             return needs
@@ -193,13 +193,44 @@ def get_bottle_plan():
         # we want to produce at least 1 custom potion for the meantime, we will have this be known
         # as potion thresehold
         # DEFAULT POTIONS - fully red, green, blue or dark
+
+        res = connection.execute(sqlalchemy.text("SELECT red, green, blue, dark, quantity "+\
+                                           "FROM wishlist " +\
+                                            "WHERE exclude = FALSE"))
+
         wishlist = res.all()
+        res = connection.execute(sqlalchemy.text("SELECT red, green, blue, dark "+\
+                                           "FROM wishlist " +\
+                                            "WHERE exclude = TRUE"))
+        excluded =set([tuple(potion) for potion in res.all()])
+
 
         potion_type = None
         # check wishlist, and add quantities we want before continuing
         for potion in wishlist:
             potion_type = [potion[0], potion[1], potion[2], potion[3]]
             quantity = potion[4]
+            # check inventory for each potion
+            max_potions = 0
+            for i in range(4):
+                ml_required = potion_type[i]
+                if (ml_required == 0):
+                    continue
+                produced = inventory[i] // potion_type[i]
+                if produced == 0:
+                    break
+                if max_potions == 0:
+                    max_potions = produced
+                    continue
+                max_potions = min(produced, max_potions)
+            print("Produced ", max_potions, " for ", potion_type)
+
+            if max_potions == 0:
+                continue
+            elif max_potions < quantity:
+                quantity = max_potions
+                
+            print('produced: ', quantity, " of " , potion_type)
             if quantity + total_potions >= 50:
                 potions_produced = (50 - total_potions) 
                 needs.append(
@@ -212,50 +243,53 @@ def get_bottle_plan():
             needs.append(
                             {
                                 "potion_type": potion_type.copy(),
-                                "quantity": potions_produced,
+                                "quantity": quantity,
                             }
                         )
 
-        potion_type = [0, 0, 0, 0]
-        for idx in range(len(inventory)):
-            potions_produced = (inventory[idx] // 100)
+        # potion_type = [0, 0, 0, 0]
+        # for idx in range(len(inventory)):
+        #     potion_type[idx] = 100
+        #     if (tuple(potion_type) in excluded):
+        #         continue
+        #     potions_produced = (inventory[idx] // 100)
 
-            # check potion thresehold
-            if (potions_produced == 0):
-                continue;
-            if potions_produced > 5:
-                 potions_produced = math.floor(potions_produced * POTION_THRESEHOLD[idx])
+        #     # check potion thresehold
+        #     if (potions_produced == 0):
+        #         continue;
+        #     if potions_produced > 5:
+        #          potions_produced = math.floor(potions_produced * POTION_THRESEHOLD[idx])
                 
-            potion_type[idx] = 100
 
-            if potions_produced + total_potions >= 50:
-                potions_produced = (50 - total_potions) 
-                needs.append(
-                                {
-                                    "potion_type": potion_type.copy(),
-                                    "quantity": potions_produced,
-                                }
-                            )
-                return needs
+        #     if potions_produced + total_potions >= 50:
+        #         potions_produced = (50 - total_potions) 
+        #         needs.append(
+        #                         {
+        #                             "potion_type": potion_type.copy(),
+        #                             "quantity": potions_produced,
+        #                         }
+        #                     )
+        #         return needs
 
-            needs.append(
-                            {
-                                "potion_type": potion_type.copy(),
-                                "quantity": potions_produced,
-                            }
-                        )
+        #     needs.append(
+        #                     {
+        #                         "potion_type": potion_type.copy(),
+        #                         "quantity": potions_produced,
+        #                     }
+        #                 )
           
 
-            potion_type[idx] = 0
+        #     potion_type[idx] = 0
 
-            inventory[idx] -= potions_produced * 100
-            total_potions += potions_produced
+        #     inventory[idx] -= potions_produced * 100
+        #     total_potions += potions_produced
 
         print(inventory, total_potions)
         # CUSTOM POTIONS
         # use remaining mls to create some wacky potion
         # calculate most custom potions we can make
-        create_custom_potions(inventory, needs, total_potions)
+        print('excluded:', excluded)
+        create_custom_potions(inventory, needs,excluded, total_potions,)
         
 
         # let custom potions be 
@@ -294,7 +328,7 @@ def get_potion_rankings():
         stmt = stmt.where(potions_ledger_table.c.time)
         connection.execute()
 
-def create_custom_potions(inventory: list[int], needs: list[dict], total_potions: int = 0, ratio: list[int] = None):
+def create_custom_potions(inventory: list[int], needs: list[dict], excluded: set, total_potions: int = 0, ratio: list[int] = None):
     # Store potion quantity by type
     potion_quantities = {}
 
@@ -315,9 +349,13 @@ def create_custom_potions(inventory: list[int], needs: list[dict], total_potions
                 if inventory[j] < 50:
                     continue
                 potion_type[j] = 50
+                key = tuple(potion_type)
+                if key in excluded:
+                    potion_type[j] = 0
+                    continue
+
                 inventory[j] -= 50
                 inventory[i] -= 50
-                key = tuple(potion_type)
                 if key in potion_quantities:
                     potion_quantities[key] += 1
                 else:
@@ -349,15 +387,21 @@ def create_custom_potions(inventory: list[int], needs: list[dict], total_potions
                 # Modify potion type for this combination
                 potion_type[j] = 25
                 potion_type[buddy] = 25
-                inventory[j] -= 25
-                inventory[buddy] -= 25
-                inventory[i] -= 50
-
                 key = tuple(potion_type)
+                if (key in excluded):
+                        potion_type[j] = 0
+                        potion_type[buddy] = 0
+                        continue
                 if key in potion_quantities:
                     potion_quantities[key] += 1
                 else:
                     potion_quantities[key] = 1
+
+                inventory[j] -= 25
+                inventory[buddy] -= 25
+                inventory[i] -= 50
+
+               
                 potion_type[j] = 0
                 potion_type[buddy] = 0
 

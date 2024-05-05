@@ -496,11 +496,7 @@ INSERT INTO "public"."inventory_ledger" ("id", "time", "attribute", "change", "r
 	(206, '2024-05-05 12:17:50.971061+00', 'green_ml', -50, 'potion delivery'),
 	(207, '2024-05-05 12:17:50.971061+00', 'blue_ml', -50, 'potion delivery'),
 	(208, '2024-05-05 14:11:12.260935+00', 'red_ml', -200, 'potion delivery'),
-	(209, '2024-05-05 14:19:52.695265+00', 'gold', 150, '113 checked out.'),
-	(210, '2024-05-05 16:24:33.126964+00', 'green_ml', 2500, 'barrel delivery'),
-	(211, '2024-05-05 16:24:33.126964+00', 'blue_ml', 2500, 'barrel delivery'),
-	(212, '2024-05-05 16:24:33.126964+00', 'gold', -550, 'barrel delivery'),
-	(213, '2024-05-05 16:24:33.305038+00', 'red_ml', -300, 'potion delivery');
+	(209, '2024-05-05 14:19:52.695265+00', 'gold', 150, '113 checked out.');
 
 
 --
@@ -629,8 +625,7 @@ INSERT INTO "public"."potion_ledger" ("id", "time", "change", "potion_sku", "rea
 	(130, '2024-05-05 12:17:50.971061+00', 3, 'blue_potion', 'potion delivery'),
 	(131, '2024-05-05 12:17:50.971061+00', 1, 'insightful_jerking_', 'potion delivery'),
 	(132, '2024-05-05 14:11:12.260935+00', 2, 'red_potion', 'potion delivery'),
-	(133, '2024-05-05 14:19:52.695265+00', -3, 'green_potion', '113 checked out.'),
-	(134, '2024-05-05 16:24:33.305038+00', 3, 'red_potion', 'potion delivery');
+	(133, '2024-05-05 14:19:52.695265+00', -3, 'green_potion', '113 checked out.');
 
 
 --
@@ -694,7 +689,7 @@ SELECT pg_catalog.setval('"public"."carts_id_seq"', 113, true);
 -- Name: inventory_ledger_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('"public"."inventory_ledger_id_seq"', 213, true);
+SELECT pg_catalog.setval('"public"."inventory_ledger_id_seq"', 209, true);
 
 
 --
@@ -708,7 +703,7 @@ SELECT pg_catalog.setval('"public"."potion_carts_id_seq"', 96, true);
 -- Name: potion_ledger_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('"public"."potion_ledger_id_seq"', 134, true);
+SELECT pg_catalog.setval('"public"."potion_ledger_id_seq"', 133, true);
 
 
 --
