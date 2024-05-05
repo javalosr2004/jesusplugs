@@ -9,11 +9,16 @@ from sqlalchemy import func
 from src.api import catalog
 from src.helper import potion_type_name,  idx_to_color
 import re
-from src.models import potions_table, inventory_ledger_table, potions_ledger_table
+from src.models import potions_table, inventory_ledger_table, potions_ledger_table, Wishlist
 import math, random
 
 # RED, GREEN, BLUE, DARK
 POTION_THRESEHOLD = [0.5, 0.5, 0.5, 0.5]
+class Color(Enum):
+    red = 0
+    green = 1
+    blue = 2
+    dark = 3
 
 
 router = APIRouter(
@@ -26,12 +31,26 @@ class PotionInventory(BaseModel):
     potion_type: list[int]
     quantity: int
 
-class Potion[BaseModel]:
+class Potion(BaseModel):
     potion_type: list[int]
+    quantity: int
 
 @router.post("/wishlist")
 def add_to_wishlist(potions: list[Potion]):
-    pass
+    insert_val = []
+    with db.engine.begin() as connection:
+        for potion in potions:
+            insert_val.append({
+                "red": potion.potion_type[0],
+                "green": potion.potion_type[1],
+                "blue": potion.potion_type[2],
+                "dark": potion.potion_type[3],
+                "quantity": potion.quantity
+            })
+        connection.execute(sqlalchemy.insert(Wishlist).values(insert_val))
+    return "OK"
+
+
 
 @router.patch("/wishlist")
 def remove_from_wishlist(potions: list[Potion]):

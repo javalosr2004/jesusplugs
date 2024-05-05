@@ -21,3 +21,7 @@ carts_table = sqlalchemy.Table("carts", meta_cart, autoload_with=database.engine
 # SQL table for inventory ledger
 meta_inventory_ledger = sqlalchemy.MetaData()
 inventory_ledger_table = sqlalchemy.Table("inventory_ledger", meta_inventory_ledger, autoload_with=database.engine)
+
+# SQL table for wishlist
+meta_wishlist_ledger = sqlalchemy.MetaData()
+Wishlist = sqlalchemy.Table("wishlist", meta_wishlist_ledger, autoload_with=database.engine)
