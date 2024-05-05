@@ -72,6 +72,7 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
         return "OK"
     with db.engine.begin() as connection:
         
+
         # if potion is already in db, simply update value, else insert
         for delivery in potions_delivered:
             name = potion_type_name(delivery.potion_type)
@@ -144,13 +145,20 @@ def get_bottle_plan():
     change_inventory = [0, 0, 0, 0]
     needs = []
     total_potions = 0
+    wishlist = []
 
     # regex for bottles
     with db.engine.begin() as connection:
+      
         # check if we should start favoring some potions, depending on if we have enough potions
         # calculate how many potions we currently have
-        result = connection.execute(sqlalchemy.text("SELECT SUM(change) as potion_count FROM potion_ledger"))
-        total_potions = result.scalar_one_or_none()
+        res = connection.execute(sqlalchemy.text("SELECT SUM(change) as potion_count FROM potion_ledger"))
+        total_potions = res.scalar_one_or_none()
+
+        res = connection.execute(sqlalchemy.text("SELECT red, green, blue, dark, quantity "+\
+                                           "FROM wishlist"))
+
+        
         if (total_potions == None):
             print('failed to fetch potion count')
             return needs
@@ -159,6 +167,7 @@ def get_bottle_plan():
         if total_potions >= 50:
             print("too many potions, exceeds 50")
             return needs
+
 
         result = connection.execute(sqlalchemy.text(f"""
             SELECT attribute, SUM(change) as total
@@ -184,6 +193,29 @@ def get_bottle_plan():
         # we want to produce at least 1 custom potion for the meantime, we will have this be known
         # as potion thresehold
         # DEFAULT POTIONS - fully red, green, blue or dark
+        wishlist = res.all()
+
+        potion_type = None
+        # check wishlist, and add quantities we want before continuing
+        for potion in wishlist:
+            potion_type = [potion[0], potion[1], potion[2], potion[3]]
+            quantity = potion[4]
+            if quantity + total_potions >= 50:
+                potions_produced = (50 - total_potions) 
+                needs.append(
+                                {
+                                    "potion_type": potion_type.copy(),
+                                    "quantity": potions_produced,
+                                }
+                            )
+                return needs
+            needs.append(
+                            {
+                                "potion_type": potion_type.copy(),
+                                "quantity": potions_produced,
+                            }
+                        )
+
         potion_type = [0, 0, 0, 0]
         for idx in range(len(inventory)):
             potions_produced = (inventory[idx] // 100)
@@ -205,6 +237,13 @@ def get_bottle_plan():
                                 }
                             )
                 return needs
+
+            needs.append(
+                            {
+                                "potion_type": potion_type.copy(),
+                                "quantity": potions_produced,
+                            }
+                        )
           
 
             potion_type[idx] = 0
