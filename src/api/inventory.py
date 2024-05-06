@@ -4,7 +4,7 @@ from src.api import auth
 import sqlalchemy
 from src import database as db
 from sqlalchemy import func
-from src.models import potions_ledger_table
+from src.models import potions_ledger_table, CapacityLedger, inventory_ledger_table
 
 router = APIRouter(
     prefix="/inventory",
@@ -46,10 +46,25 @@ def get_capacity_plan():
     Start with 1 capacity for 50 potions and 1 capacity for 10000 ml of potion. Each additional 
     capacity unit costs 1000 gold.
     """
+    # query db, check for any undelivered capacities
+    with db.engine.begin() as connection:
+        stmt = sqlalchemy.select(CapacityLedger.c.quantity).where(CapacityLedger.c.barrel == True, 
+                                                                  CapacityLedger.c.delivered == False).limit(1)
+        res = connection.execute(stmt)
+        ml_capacity = res.scalar_one_or_none()
+
+        stmt = sqlalchemy.select(CapacityLedger.c.quantity).where(CapacityLedger.c.potion == True,
+                                                                  CapacityLedger.c.delivered == False).limit(1)
+        res = connection.execute(stmt)
+        potion_capacity = res.scalar_one_or_none()
+        if not ml_capacity:
+            ml_capacity = 0
+        if not potion_capacity:
+            potion_capacity = 0
 
     return {
-        "potion_capacity": 0,
-        "ml_capacity": 0
+        "potion_capacity": potion_capacity,
+        "ml_capacity": ml_capacity 
         }
 
 class CapacityPurchase(BaseModel):
@@ -63,5 +78,27 @@ def deliver_capacity_plan(capacity_purchase : CapacityPurchase, order_id: int):
     Start with 1 capacity for 50 potions and 1 capacity for 10000 ml of potion. Each additional 
     capacity unit costs 1000 gold.
     """
+    # set potion capacity and/or barrel capacity as delivered
+    # take away from gold depending on quantity
+    with db.engine.begin() as connection:
+        total_gold = (capacity_purchase.potion_capacity + capacity_purchase.ml_capacity) * 1000
+        stmt = sqlalchemy.insert(inventory_ledger_table).values({
+            "attribute": "gold",
+            "change": -1 * total_gold
+        })
+        connection.execute(stmt)
+
+        # update as delivered
+        stmt = sqlalchemy.update(CapacityLedger).values({
+            "delivered": True
+        }).where(CapacityLedger.c.quantity == capacity_purchase.potion_capacity,
+                 CapacityLedger.c.potion == True ,CapacityLedger.c.delivered == False)
+        connection.execute(stmt)
+        stmt = sqlalchemy.update(CapacityLedger).values({
+            "delivered": True
+        }).where(CapacityLedger.c.quantity == capacity_purchase.ml_capacity,
+                 CapacityLedger.c.barrel == True , CapacityLedger.c.delivered == False)
+        connection.execute(stmt)
+
 
     return "OK"

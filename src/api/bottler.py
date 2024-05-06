@@ -9,11 +9,11 @@ from sqlalchemy import func
 from src.api import catalog
 from src.helper import potion_type_name,  idx_to_color
 import re
-from src.models import potions_table, inventory_ledger_table, potions_ledger_table, Wishlist
+from src.models import potions_table, inventory_ledger_table, potions_ledger_table, Wishlist, CapacityLedger
 import math, random
 
 # RED, GREEN, BLUE, DARK
-POTION_THRESEHOLD = [0.5, 0.5, 0.5, 0.5]
+POTION_THRESEHOLD = [0.25, 0.15, 0.20, 0.15]
 class Color(Enum):
     red = 0
     green = 1
@@ -144,6 +144,9 @@ def get_bottle_plan():
     """
     # keep track of our needs
     inventory = [0, 0, 0, 0]
+    BASE_POTIONS = 50
+    capacity_potions = BASE_POTIONS
+    change_capacity = None
     change_inventory = [0, 0, 0, 0]
     needs = []
     total_potions = 0
@@ -152,6 +155,16 @@ def get_bottle_plan():
 
     # regex for bottles
     with db.engine.begin() as connection:
+        # get chage in capacity
+        stmt = sqlalchemy.select(sqlalchemy.func.sum(CapacityLedger.c.quantity) * 50).where(
+            CapacityLedger.c.potion == True, CapacityLedger.c.delivered == True
+        )
+        res = connection.execute(stmt)
+        change_capacity = res.scalar_one_or_none()
+        if (not change_capacity):
+            change_capacity = 0
+        capacity_potions += change_capacity
+        print(capacity_potions)
       
         # check if we should start favoring some potions, depending on if we have enough potions
         # calculate how many potions we currently have
@@ -164,9 +177,10 @@ def get_bottle_plan():
             return needs
         print(total_potions)
 
-        if total_potions >= 50:
-            print("too many potions, exceeds 50")
+        if total_potions >= capacity_potions:
+            print("too many potions, exceeds ", str(capacity_potions))
             return needs
+
 
 
         result = connection.execute(sqlalchemy.text(f"""
@@ -231,8 +245,8 @@ def get_bottle_plan():
                 quantity = max_potions
                 
             print('produced: ', quantity, " of " , potion_type)
-            if quantity + total_potions >= 50:
-                potions_produced = (50 - total_potions) 
+            if quantity + total_potions >= capacity_potions:
+                potions_produced = (capacity_potions - total_potions) 
                 needs.append(
                                 {
                                     "potion_type": potion_type.copy(),
@@ -247,49 +261,50 @@ def get_bottle_plan():
                             }
                         )
 
-        # potion_type = [0, 0, 0, 0]
-        # for idx in range(len(inventory)):
-        #     potion_type[idx] = 100
-        #     if (tuple(potion_type) in excluded):
-        #         continue
-        #     potions_produced = (inventory[idx] // 100)
+        potion_type = [0, 0, 0, 0]
+        for idx in range(len(inventory)):
+            potion_type[idx] = 100
+            if (tuple(potion_type) in excluded):
+                continue
+            potions_produced = (inventory[idx] // 100)
 
-        #     # check potion thresehold
-        #     if (potions_produced == 0):
-        #         continue;
-        #     if potions_produced > 5:
-        #          potions_produced = math.floor(potions_produced * POTION_THRESEHOLD[idx])
+            # check potion thresehold
+            if (potions_produced == 0):
+                potion_type[idx] = 0
+                continue;
+            potions_produced = min(potions_produced, math.floor((capacity_potions - total_potions) * POTION_THRESEHOLD[idx]))
                 
 
-        #     if potions_produced + total_potions >= 50:
-        #         potions_produced = (50 - total_potions) 
-        #         needs.append(
-        #                         {
-        #                             "potion_type": potion_type.copy(),
-        #                             "quantity": potions_produced,
-        #                         }
-        #                     )
-        #         return needs
+            if potions_produced + total_potions >= capacity_potions:
+                potions_produced = (capacity_potions - total_potions) 
+                needs.append(
+                                {
+                                    "potion_type": potion_type.copy(),
+                                    "quantity": potions_produced,
+                                }
+                            )
+                return needs
 
-        #     needs.append(
-        #                     {
-        #                         "potion_type": potion_type.copy(),
-        #                         "quantity": potions_produced,
-        #                     }
-        #                 )
+            needs.append(
+                            {
+                                "potion_type": potion_type.copy(),
+                                "quantity": potions_produced,
+                            }
+                        )
           
 
-        #     potion_type[idx] = 0
+            potion_type[idx] = 0
 
-        #     inventory[idx] -= potions_produced * 100
-        #     total_potions += potions_produced
+            inventory[idx] -= potions_produced * 100
+            total_potions += potions_produced
 
         print(inventory, total_potions)
         # CUSTOM POTIONS
         # use remaining mls to create some wacky potion
         # calculate most custom potions we can make
+        excluded = excluded.union(set(wishlist))
         print('excluded:', excluded)
-        create_custom_potions(inventory, needs,excluded, total_potions,)
+        create_custom_potions(inventory, needs,excluded, total_potions, capacity_potions)
         
 
         # let custom potions be 
@@ -328,13 +343,13 @@ def get_potion_rankings():
         stmt = stmt.where(potions_ledger_table.c.time)
         connection.execute()
 
-def create_custom_potions(inventory: list[int], needs: list[dict], excluded: set, total_potions: int = 0, ratio: list[int] = None):
+def create_custom_potions(inventory: list[int], needs: list[dict], excluded: set, total_potions: int = 0, change_capacity: int = 50, ratio: list[int] = None):
     # Store potion quantity by type
     potion_quantities = {}
 
     # iterate until no more complete potions can be created
     inventory_check = 0
-    while inventory_check < 3 and total_potions < 50:
+    while inventory_check < 3 and total_potions < change_capacity:
         inventory_check = 0
         # iterate every potion, getting ratios of 50 and 25
         for i in random.sample(range(0, 4), 4):
@@ -362,10 +377,10 @@ def create_custom_potions(inventory: list[int], needs: list[dict], excluded: set
                     potion_quantities[key] = 1
                 potion_type[j] = 0
                 total_potions += 1
-                if total_potions == 50 or inventory[i] < 50:
+                if total_potions == change_capacity or inventory[i] < 50:
                     break
                    
-            if total_potions == 50 or inventory[i] < 50:
+            if total_potions == change_capacity or inventory[i] < 50:
                 break
 
             for j in range(0, 4):
@@ -406,7 +421,7 @@ def create_custom_potions(inventory: list[int], needs: list[dict], excluded: set
                 potion_type[buddy] = 0
 
                 total_potions += 1
-                if total_potions == 50 or inventory[i] < 50:
+                if total_potions == change_capacity or inventory[i] < 50:
                     break
 
     # Append all potion types and quantities to needs at the end

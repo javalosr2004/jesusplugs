@@ -25,3 +25,7 @@ inventory_ledger_table = sqlalchemy.Table("inventory_ledger", meta_inventory_led
 # SQL table for wishlist
 meta_wishlist_ledger = sqlalchemy.MetaData()
 Wishlist = sqlalchemy.Table("wishlist", meta_wishlist_ledger, autoload_with=database.engine)
+
+# SQL table for capacity ledger
+capacity_meta = sqlalchemy.MetaData()
+CapacityLedger = sqlalchemy.Table("capacity_ledger", capacity_meta, autoload_with=database.engine)

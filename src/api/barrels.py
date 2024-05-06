@@ -120,6 +120,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         if (not ml_purchased):
             print("error parsing capacity")
             ml_purchased = 0
+        print('capacity for barrels: ', ml_purchased)
 
         gold = inventory["gold"]
         total_ml = inventory.get("red_ml", 0) + inventory.get("green_ml", 0) + inventory.get("blue_ml", 0) + inventory.get("dark_ml", 0)
