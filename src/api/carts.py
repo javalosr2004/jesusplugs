@@ -94,18 +94,13 @@ def search_orders(
         total_count_query = sqlalchemy.select(sqlalchemy.func.count()).select_from(carts_table).join(
             customer_table, carts_table.c.customer_id == customer_table.c.id
         )
+        query = sqlalchemy.select(carts_table.c.id.label("line_item_id"), carts_table.c.item_sku, customer_table.c.customer_name, 
+                                   (carts_table.c.quantity * potions_table.c.price).label("line_item_total"), customer_table.c.visit_time.label("timestamp"))
+        query = query.join(carts_table, carts_table.c.customer_id == customer_table.c.id)
+        query = query.join(potions_table, potions_table.c.potion_sku == carts_table.c.item_sku)
 
  
-        query = sqlalchemy.select([
-            carts_table.c.id.label("line_item_id"),
-            carts_table.c.item_sku,
-            customer_table.c.customer_name,
-            (carts_table.c.quantity * potions_table.c.price).label("line_item_total"),
-            customer_table.c.visit_time.label("timestamp")
-        ]).select_from(
-            carts_table.join(customer_table, carts_table.c.customer_id == customer_table.c.id)  
-            .join(potions_table, carts_table.c.item_sku == potions_table.c.potion_sku) 
-        )
+      
 
 
 
@@ -123,7 +118,9 @@ def search_orders(
         query = query.limit(5)
         if len(search_page := search_page.strip()) > 0:
             try:
-                search_page = int(search_page)
+                search_page = int(search_page) - 1
+                if (search_page < 0):
+                    search_page = 0
                 query = query.offset(search_page * 5)
             except Exception as e:
                 print(e)
@@ -317,9 +314,9 @@ import re
 
 def return_previous_page(query: str, line_count: int, cur_page: int):
     # prev_page = "/carts/search/"
-    if line_count == 0 or cur_page == 0:
+    if line_count == 0 or cur_page <= 0:
         return ""
-    remaining = ((int(line_count) - ((cur_page + 1) * 5))) // 5
+    remaining = ((int(line_count) - ((cur_page) * 5))) // 5
     if remaining < -1:
         new_page = (line_count // 5)
     else:
@@ -331,10 +328,10 @@ def return_previous_page(query: str, line_count: int, cur_page: int):
 
 def return_next_page(query: str, line_count: int, cur_page: int):
     # prev_page = "/carts/search/"
-    remaining = ((int(line_count) - ((cur_page + 1) * 5))) // 5
+    remaining = ((int(line_count) - ((cur_page) * 5))) // 5
     if remaining <= 0:
         return ""
-    new_page = cur_page + 1
+    new_page = cur_page + 2
     # if (cur_page == 0):
         # return prev_page + query + "&search_page=" + str(new_page)
     # query = re.sub(r'search_page=\d+', f'search_page={new_page}', query)
