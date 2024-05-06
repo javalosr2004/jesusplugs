@@ -96,9 +96,17 @@ def search_orders(
         )
 
  
-        query = sqlalchemy.select(carts_table.c.id.label("line_item_id"), carts_table.c.item_sku, customer_table.c.customer_name, 
-                                   carts_table.c.quantity.label("line_item_total"), customer_table.c.visit_time.label("timestamp"))
-        query = query.join(carts_table, carts_table.c.customer_id == customer_table.c.id)
+        query = sqlalchemy.select([
+            carts_table.c.id.label("line_item_id"),
+            carts_table.c.item_sku,
+            customer_table.c.customer_name,
+            (carts_table.c.quantity * potions_table.c.price).label("line_item_total"),
+            customer_table.c.visit_time.label("timestamp")
+        ]).select_from(
+            carts_table.join(customer_table, carts_table.c.customer_id == customer_table.c.id)  
+            .join(potions_table, carts_table.c.item_sku == potions_table.c.potion_sku) 
+        )
+
 
 
         # loop through conditional operators and tack onto query
