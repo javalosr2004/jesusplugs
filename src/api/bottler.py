@@ -244,9 +244,13 @@ def get_bottle_plan():
             elif max_potions < quantity:
                 quantity = max_potions
                 
+            if quantity == 0:
+                continue
             print('produced: ', quantity, " of " , potion_type)
             if quantity + total_potions >= capacity_potions:
                 potions_produced = (capacity_potions - total_potions) 
+                if potions_produced == 0:
+                    continue
                 needs.append(
                                 {
                                     "potion_type": potion_type.copy(),
@@ -275,8 +279,12 @@ def get_bottle_plan():
             potions_produced = min(potions_produced, math.floor((capacity_potions - total_potions) * POTION_THRESEHOLD[idx]))
                 
 
+            if potions_produced == 0:
+                continue
             if potions_produced + total_potions >= capacity_potions:
                 potions_produced = (capacity_potions - total_potions) 
+                if potions_produced == 0:
+                    continue
                 needs.append(
                                 {
                                     "potion_type": potion_type.copy(),
