@@ -315,7 +315,7 @@ def return_previous_page(query: str, line_count: int, cur_page: int):
     if remaining < -1:
         new_page = (line_count // 5)
     else:
-        new_page = cur_page - 1
+        new_page = cur_page 
     return new_page
 
     # query = re.sub(r'search_page=\d+', f'search_page={new_page}', query)
