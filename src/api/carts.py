@@ -110,7 +110,7 @@ def search_orders(
             total_count_query = total_count_query.filter(customer_table.c.customer_name.ilike(customer_name+ "%"))
         if len(potion_sku := potion_sku.strip()) > 0:
             query = query.filter(carts_table.c.item_sku.ilike(potion_sku))
-            total_count_query = total_count_query.filter(carts_table.c.item_sku.ilike(potion_sku))
+            total_count_query = total_count_query.filter(carts_table.c.item_sku.ilike(potion_sku + "%"))
         if sort_order.value == "asc":
             query = query.order_by(sqlalchemy.text(sort_col.value))
         else:
