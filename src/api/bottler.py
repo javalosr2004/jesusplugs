@@ -174,7 +174,7 @@ def get_bottle_plan():
           
         if (total_potions == None):
             print('failed to fetch potion count')
-            return needs
+            total_potions = 0
         print(total_potions)
 
         if total_potions >= capacity_potions:
