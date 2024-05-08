@@ -157,7 +157,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                 print(f"purchased {barrel.sku} at {barrel.price}")
                 max_ml = ((((BASE_ML + ml_purchased) - total_ml) * .25) // barrel.ml_per_barrel)
                 max_gold = ((gold - total_cost) * .25) // barrel.price
-                quantity = min(max_ml, max_gold, barrel.quantity)
+                quantity = int(min(max_ml, max_gold, barrel.quantity))
                 if quantity > 0:
                     purchased.append(
                         {
