@@ -175,7 +175,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             print('tummy too full, increasing ml')
             connection.execute(sqlalchemy.text("INSERT INTO capacity_ledger (barrel, quantity) " +\
                                             "VALUES (TRUE, 1)"))
-    print(wholesale_catalog)
+    print(wholesale_catalog, purchased)
     return purchased
 
 def get_color(potion_type: list[int]):
