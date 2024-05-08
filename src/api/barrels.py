@@ -5,6 +5,7 @@ import sqlalchemy
 from src import database as db
 from src.models import inventory_ledger_table
 import re
+import random
 
 # GLOBAL regex
 barrel_re = re.compile("(\w+)_(\w+)_BARREL")
@@ -114,7 +115,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             inventory[row.attribute.strip()] = row.total
 
       
-        result = connection.execute(sqlalchemy.text("SELECT SUM(quantity) FROM capacity_ledger " +\
+        result = connection.execute(sqlalchemy.text("SELECT (COALESCE(SUM(quantity), 0) * 10000) FROM capacity_ledger " +\
                                                     "WHERE barrel = TRUE AND delivered = TRUE"))
         ml_purchased = result.scalar_one_or_none()
         if (not ml_purchased):
@@ -122,45 +123,58 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             ml_purchased = 0
         print('capacity for barrels: ', ml_purchased)
 
+
         gold = inventory["gold"]
         total_ml = inventory.get("red_ml", 0) + inventory.get("green_ml", 0) + inventory.get("blue_ml", 0) + inventory.get("dark_ml", 0)
         total_cost = 0
+        print("rankings:")
+        rankings = rank_barrel_plan(wholesale_catalog, gold, BASE_ML + ml_purchased)
+
+        print(rankings)
         # check respective barrels and how much they have
         # iterate throug barrel catalog, see if we need any of those colors
-        for barrel in wholesale_catalog:
-            # get the color of the barrel
-            barrel_match = barrel_re.match(barrel.sku)
-            if(not barrel_match):
-                print("no match", barrel.sku)
-                continue
-            size = barrel_match.group(1)
-            color = get_color(barrel.potion_type) + "_ml"
-            if not color:
-                continue
-            # check if the number of ml we want for a given color is less than thresehold
-          
-            # purchase barrel
-            if (barrel.price <= (gold - total_cost) and size.lower() != "mini"):
-                total_cost += barrel.price
+        empty_check = 0
+        
+        while (gold - total_cost) > 0 and (total_ml < (BASE_ML + ml_purchased)) and empty_check < 4:
+            # get a random color
+            empty_check = 0
+            for i in random.sample(range(4), 4):
+                color_barrels = rankings[i]
+                if (len(color_barrels) == 0):
+                    empty_check += 1
+                    continue
+                
+                barrel = color_barrels[-1][0]
+                print("barrel ", barrel)
+                # check if the number of ml we want for a given color is less than thresehold
+                # purchase barrel
                 if (BASE_ML + ml_purchased) < (total_ml + barrel.ml_per_barrel):
+                    color_barrels.pop()
                     connection.execute(sqlalchemy.text("INSERT INTO capacity_ledger (barrel, quantity) " +\
-                                                       "VALUES (TRUE, 1)"))
+                                                    "VALUES (TRUE, 1)"))
                     break
 
                 print(f"purchased {barrel.sku} at {barrel.price}")
-                purchased.append(
-                    {
-                        "sku": barrel.sku,
-                        "quantity" : 1
-                    }
-                )
-                total_ml += barrel.ml_per_barrel
-                # add to "demo" inventory
-                inventory[color] = inventory.get(color, 0) + barrel.ml_per_barrel
-            else:
-                print("Insufficient gold", barrel, gold)
-                continue;
+                max_ml = ((((BASE_ML + ml_purchased) - total_ml) * .25) // barrel.ml_per_barrel)
+                max_gold = ((gold - total_cost) * .25) // barrel.price
+                quantity = min(max_ml, max_gold, barrel.quantity)
+                if quantity > 0:
+                    purchased.append(
+                        {
+                            "sku": barrel.sku,
+                            "quantity" : quantity
+                        }
+                    )
+                    total_ml += barrel.ml_per_barrel * quantity
+                    total_cost += barrel.price * quantity
+                color_barrels.pop()
 
+                
+
+        if (total_ml < (BASE_ML + ml_purchased)):
+            print('tummy too full, increasing ml')
+            connection.execute(sqlalchemy.text("INSERT INTO capacity_ledger (barrel, quantity) " +\
+                                            "VALUES (TRUE, 1)"))
     print(wholesale_catalog)
     return purchased
 
@@ -174,9 +188,22 @@ def get_color(potion_type: list[int]):
     elif potion_type[3] == 1:
         return "DARK"
     return None
+
+def get_index_potion_type(potion_type: list[int]):
+    return potion_type.index(1)
 # returns a nested list, default format: RED, GREEN, BLUE, DARK
 # within each, is sorted ranking of colors, based on value and available gold
 def rank_barrel_plan(barrels: list[Barrel], available_gold: int, available_space: int):   
     plans = [[], [], [], []]
+    if available_space == 0:
+        return
+    for barrel in barrels:
+        if barrel.price > available_gold or barrel.ml_per_barrel > available_space:
+            continue
+        plans[get_index_potion_type(barrel.potion_type)].append((barrel, barrel.price / barrel.ml_per_barrel ))
+    
+    return [sorted(plan, key=lambda x : x[1], reverse=True ) for plan in plans]
+    
+    
 
 
