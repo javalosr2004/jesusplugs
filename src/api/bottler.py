@@ -269,6 +269,7 @@ def get_bottle_plan():
         for idx in range(len(inventory)):
             potion_type[idx] = 100
             if (tuple(potion_type) in excluded):
+                potion_type[idx] = 100
                 continue
             potions_produced = (inventory[idx] // 100)
 
@@ -280,10 +281,12 @@ def get_bottle_plan():
                 
 
             if potions_produced == 0:
+                potion_type[idx] = 0
                 continue
             if potions_produced + total_potions >= capacity_potions:
                 potions_produced = (capacity_potions - total_potions) 
                 if potions_produced == 0:
+                    potion_type[idx] = 0
                     continue
                 needs.append(
                                 {
