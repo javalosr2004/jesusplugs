@@ -265,11 +265,12 @@ def get_bottle_plan():
                             }
                         )
 
+        excluded = excluded.union(set(wishlist))
         potion_type = [0, 0, 0, 0]
         for idx in range(len(inventory)):
             potion_type[idx] = 100
             if (tuple(potion_type) in excluded):
-                potion_type[idx] = 100
+                potion_type[idx] = 0
                 continue
             potions_produced = (inventory[idx] // 100)
 
@@ -313,7 +314,6 @@ def get_bottle_plan():
         # CUSTOM POTIONS
         # use remaining mls to create some wacky potion
         # calculate most custom potions we can make
-        excluded = excluded.union(set(wishlist))
         print('excluded:', excluded)
         create_custom_potions(inventory, needs,excluded, total_potions, capacity_potions)
         
