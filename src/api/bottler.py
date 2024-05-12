@@ -250,7 +250,8 @@ def get_bottle_plan():
             if quantity + total_potions >= capacity_potions:
                 potions_produced = (capacity_potions - total_potions) 
                 if potions_produced == 0:
-                    continue
+                    return needs
+
                 needs.append(
                                 {
                                     "potion_type": potion_type.copy(),
@@ -258,6 +259,7 @@ def get_bottle_plan():
                                 }
                             )
                 return needs
+
             needs.append(
                             {
                                 "potion_type": potion_type.copy(),
@@ -288,7 +290,8 @@ def get_bottle_plan():
                 potions_produced = (capacity_potions - total_potions) 
                 if potions_produced == 0:
                     potion_type[idx] = 0
-                    continue
+                    return needs
+
                 needs.append(
                                 {
                                     "potion_type": potion_type.copy(),

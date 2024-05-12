@@ -149,9 +149,6 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                 # check if the number of ml we want for a given color is less than thresehold
                 # purchase barrel
                 if (BASE_ML + ml_purchased) < (total_ml + barrel.ml_per_barrel):
-                    color_barrels.pop()
-                    connection.execute(sqlalchemy.text("INSERT INTO capacity_ledger (barrel, quantity) " +\
-                                                    "VALUES (TRUE, 1)"))
                     break
 
                 print(f"purchased {barrel.sku} at {barrel.price}")
@@ -171,10 +168,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 
                 
 
-        if (total_ml < (BASE_ML + ml_purchased)):
-            print('tummy too full, increasing ml')
-            connection.execute(sqlalchemy.text("INSERT INTO capacity_ledger (barrel, quantity) " +\
-                                            "VALUES (TRUE, 1)"))
+
     print(wholesale_catalog, purchased)
     return purchased
 
