@@ -116,7 +116,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 
       
         result = connection.execute(sqlalchemy.text("SELECT (COALESCE(SUM(quantity), 0) * 10000) FROM capacity_ledger " +\
-                                                    "WHERE barrel = TRUE AND delivered = TRUE"))
+                                                    "WHERE barrel = TRUE AND delivered = TRUE "))
         ml_purchased = result.scalar_one_or_none()
         if (not ml_purchased):
             print("error parsing capacity")
@@ -135,7 +135,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         # iterate throug barrel catalog, see if we need any of those colors
         empty_check = 0
         
-        while (gold - total_cost) > 0 and (total_ml < (BASE_ML + ml_purchased)) and empty_check < 4:
+        while (gold - total_cost) > (gold * .35) and (total_ml < (BASE_ML + ml_purchased)) and empty_check < 4:
             # get a random color
             empty_check = 0
             for i in random.sample(range(4), 4):
@@ -144,16 +144,16 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                     empty_check += 1
                     continue
                 
-                barrel = color_barrels[-1][0]
+                barrel = color_barrels.pop()[0]
                 print("barrel ", barrel)
                 # check if the number of ml we want for a given color is less than thresehold
                 # purchase barrel
-                if (BASE_ML + ml_purchased) < (total_ml + barrel.ml_per_barrel):
+                if (BASE_ML + ml_purchased) < (total_ml + barrel.ml_per_barrel) or (gold - total_cost) <= (gold * .35):
                     break
 
                 print(f"purchased {barrel.sku} at {barrel.price}")
-                max_ml = ((((BASE_ML + ml_purchased) - total_ml) * .25) // barrel.ml_per_barrel)
-                max_gold = ((gold - total_cost) * .25) // barrel.price
+                max_ml = ((((BASE_ML + ml_purchased) - total_ml)) // barrel.ml_per_barrel) * .25
+                max_gold = (((gold - total_cost)) // barrel.price) * .25
                 quantity = int(min(max_ml, max_gold, barrel.quantity))
                 if quantity > 0:
                     purchased.append(
@@ -164,7 +164,6 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                     )
                     total_ml += barrel.ml_per_barrel * quantity
                     total_cost += barrel.price * quantity
-                color_barrels.pop()
 
                 
 
