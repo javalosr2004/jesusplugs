@@ -259,6 +259,7 @@ def get_bottle_plan():
                                 }
                             )
                 return needs
+            total_potions += quantity
 
             needs.append(
                             {
