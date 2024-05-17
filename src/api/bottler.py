@@ -232,6 +232,7 @@ def get_bottle_plan():
                     continue
                 produced = inventory[i] // potion_type[i]
                 if produced == 0:
+                    max_potions = 0
                     break
                 if max_potions == 0:
                     max_potions = produced
