@@ -261,6 +261,10 @@ def get_bottle_plan():
                             )
                 return needs
             total_potions += quantity
+            # update the potion_type inventory
+            for i in range(4):
+                ml_used = potion_type[i] * produced
+                inventory[i] -= ml_used
 
             needs.append(
                             {
